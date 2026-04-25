@@ -770,8 +770,18 @@
         }
 
         // Init
-        loadStats();
-        loadUsers();
+        if (!ADMIN_KEY) {
+            const key = prompt('请输入 Admin API Key:');
+            if (key) {
+                localStorage.setItem('adminKey', key);
+                location.reload();
+            } else {
+                window.location.href = '/login';
+            }
+        } else {
+            loadStats();
+            loadUsers();
+        }
 
         // Check for API key prompt
         if (!ADMIN_KEY) {
