@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户面板 - AI Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">🍮 AI Gateway - 我的面板</h1>
+            <a href="/login" class="text-gray-500 hover:text-gray-700">退出</a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- User Info & Quota -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">用户名</p>
+                <p class="text-lg font-bold" id="username">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">额度类型</p>
+                <p class="text-lg font-bold" id="quotaType">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">已用额度</p>
+                <p class="text-lg font-bold" id="usedQuota">-</p>
+                <div class="w-full bg-gray-200 rounded h-2 mt-2">
+                    <div id="quotaBar" class="bg-blue-600 h-2 rounded" style="width: 0%"></div>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">API Key 数量</p>
+                <p class="text-lg font-bold" id="keyCount">-</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-4 border-b">
+            <nav class="flex space-x-4">
+                <button onclick="showTab('keys')" class="tab-btn px-4 py-2 border-b-2 border-blue-600 font-medium" data-tab="keys">API Keys</button>
+                <button onclick="showTab('usage')" class="tab-btn px-4 py-2 text-gray-500" data-tab="usage">调用记录</button>
+                <button onclick="showTab('stats')" class="tab-btn px-4 py-2 text-gray-500" data-tab="stats">用量统计</button>
+                <button onclick="showTab('cost')" class="tab-btn px-4 py-2 text-gray-500" data-tab="cost">费用估算</button>
+                <button onclick="showTab('settings')" class="tab-btn px-4 py-2 text-gray-500" data-tab="settings">设置</button>
+            </nav>
+        </div>
+
+        <!-- Keys Tab -->
+        <div id="tab-keys" class="tab-content">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-semibold">我的 API Keys</h2>
+                <button onclick="createKey()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ 创建 Key</button>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Key</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">名称</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">创建时间</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Usage Tab -->
+        <div id="tab-usage" class="tab-content hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="bg-white p-4 rounded shadow">
+                    <p class="text-sm text-gray-500">今日调用次数</p>
+                    <p class="text-2xl font-bold" id="todayCalls">-</p>
+                </div>
+                <div class="bg-white p-4 rounded shadow">
+                    <p class="text-sm text-gray-500">今日 Tokens</p>
+                    <p class="text-2xl font-bold" id="todayTokens">-</p>
+                </div>
+            </div>
+            <h2 class="text-lg font-semibold mb-4">最近调用记录</h2>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">时间</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">模型</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">供应商</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Tokens</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">延迟</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usageTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div id="tab-stats" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">API Key 用量统计</h2>
+                <div class="flex items-center space-x-2">
+                    <input type="date" id="statsStart" class="border rounded px-2 py-1 text-sm">
+                    <span class="text-gray-500">至</span>
+                    <input type="date" id="statsEnd" class="border rounded px-2 py-1 text-sm">
+                    <button onclick="loadKeyStats()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">查询</button>
+                </div>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Key</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">调用次数</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Token 用量</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">平均延迟</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">成功率</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">最后使用</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keyStatsTable" class="divide-y"></tbody>
+                </table>
+            </div>
+            <div class="mt-4">
+                <h3 class="text-md font-semibold mb-2">按模型统计</h3>
+                <div class="bg-white rounded shadow overflow-x-auto">
+                    <table class="min-w-full divide-y">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">模型</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">调用次数</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Token 用量</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Input/Output</th>
+                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">平均延迟</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modelStatsTable" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost Tab -->
+        <div id="tab-cost" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">费用估算</h2>
+                <div class="flex items-center space-x-2">
+                    <input type="date" id="costStart" class="border rounded px-2 py-1 text-sm">
+                    <span class="text-gray-500">至</span>
+                    <input type="date" id="costEnd" class="border rounded px-2 py-1 text-sm">
+                    <button onclick="loadCost()" class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">计算</button>
+                </div>
+            </div>
+            <div class="bg-white rounded shadow p-6 mb-4">
+                <p class="text-sm text-gray-500">估算总费用（基于模型官方定价）</p>
+                <p class="text-3xl font-bold text-green-600" id="totalCost">$0.0000</p>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">模型</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">调用次数</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Input Tokens</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Output Tokens</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Input 费用</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Output 费用</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">合计</th>
+                        </tr>
+                    </thead>
+                    <tbody id="costTable" class="divide-y"></tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">* 费用基于模型官方定价估算，实际费用可能因折扣、套餐等有所不同</p>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content hidden">
+            <h2 class="text-lg font-semibold mb-4">修改密码</h2>
+            <div class="bg-white rounded shadow p-6 max-w-md">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">旧密码</label>
+                        <input type="password" id="oldPassword" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">新密码</label>
+                        <input type="password" id="newPassword" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">确认新密码</label>
+                        <input type="password" id="confirmNewPassword" class="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <p id="pwdError" class="text-red-500 text-sm hidden"></p>
+                    <p id="pwdSuccess" class="text-green-500 text-sm hidden"></p>
+                    <button onclick="changePassword()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">
+                        修改密码
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <h3 id="modalTitle" class="text-lg font-semibold mb-4"></h3>
+            <div id="modalContent"></div>
+            <div class="flex justify-end mt-4 space-x-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:text-gray-700">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        let currentKey = localStorage.getItem('tenantKey') || '';
+
+        async function tenantFetch(path, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentKey}`,
+                ...options.headers
+            };
+            const res = await fetch(`${API}${path}`, { ...options, headers });
+            if (res.status === 401) {
+                window.location.href = '/login';
+                return null;
+            }
+            return res;
+        }
+
+        // Load user info
+        async function loadMe() {
+            const res = await tenantFetch('/api/dashboard/me');
+            if (!res) return;
+            const data = await res.json();
+            const d = data.data;
+            document.getElementById('username').textContent = d.username;
+            document.getElementById('quotaType').textContent = d.quota_type === 'token' ? '按 Token' : '按调用次数';
+            document.getElementById('keyCount').textContent = d.key_count;
+
+            const quota = d.quota_type === 'token' ? d.token_quota : d.call_quota;
+            const used = d.quota_type === 'token' ? d.token_used : d.call_used;
+            document.getElementById('usedQuota').textContent = quota === 0 ? '不限额' : `${formatNumber(used)} / ${formatNumber(quota)}`;
+
+            if (quota > 0) {
+                const pct = Math.min((used / quota) * 100, 100);
+                document.getElementById('quotaBar').style.width = `${pct}%`;
+                if (pct > 80) {
+                    document.getElementById('quotaBar').classList.remove('bg-blue-600');
+                    document.getElementById('quotaBar').classList.add('bg-red-600');
+                }
+            }
+        }
+
+        // Load keys
+        async function loadKeys() {
+            const res = await tenantFetch('/api/keys');
+            if (!res) return;
+            const data = await res.json();
+            const tbody = document.getElementById('keysTable');
+            tbody.innerHTML = data.data.map(k => `
+                <tr>
+                    <td class="px-4 py-2 font-mono text-sm">${k.key.substring(0, 20)}...
+                        <button onclick="copyKey('${k.key}')" class="ml-2 text-blue-600 text-xs">复制</button>
+                    </td>
+                    <td class="px-4 py-2">${k.name || '-'}</td>
+                    <td class="px-4 py-2 text-sm">${new Date(k.created_at).toLocaleDateString()}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${k.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${k.is_enabled ? '启用' : '禁用'}</span></td>
+                    <td class="px-4 py-2">
+                        <button onclick="toggleKey(${k.id}, ${!k.is_enabled})" class="text-yellow-600 mr-2">${k.is_enabled ? '禁用' : '启用'}</button>
+                        <button onclick="deleteKey(${k.id})" class="text-red-600">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load usage
+        async function loadUsage() {
+            const res = await tenantFetch('/api/dashboard/usage');
+            if (!res) return;
+            const data = await res.json();
+            const d = data.data;
+            document.getElementById('todayCalls').textContent = formatNumber(d.today_calls);
+            document.getElementById('todayTokens').textContent = formatNumber(d.today_tokens);
+
+            const tbody = document.getElementById('usageTable');
+            tbody.innerHTML = d.recent_logs.map(l => `
+                <tr>
+                    <td class="px-4 py-2 text-sm">${new Date(l.created_at).toLocaleString()}</td>
+                    <td class="px-4 py-2 font-mono text-sm">${l.model}</td>
+                    <td class="px-4 py-2">${l.provider_type}</td>
+                    <td class="px-4 py-2">${l.input_tokens} + ${l.output_tokens}</td>
+                    <td class="px-4 py-2">${l.latency_ms}ms</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${l.status_code < 300 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${l.status_code}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Create key
+        async function createKey() {
+            const name = prompt('Key 名称（可选）:');
+            const res = await tenantFetch('/api/keys', {
+                method: 'POST',
+                body: JSON.stringify({ name: name || '' })
+            });
+            if (res && res.ok) {
+                const data = await res.json();
+                document.getElementById('modalTitle').textContent = '新 Key 已创建';
+                document.getElementById('modalContent').innerHTML = `
+                    <p class="text-sm text-gray-500 mb-2">请妥善保管，此 Key 只显示一次：</p>
+                    <div class="bg-gray-100 p-3 rounded font-mono text-sm break-all">${data.key}</div>
+                    <button onclick="copyKey('${data.key}')" class="mt-2 text-blue-600 text-sm">复制到剪贴板</button>
+                `;
+                document.getElementById('modal').classList.remove('hidden');
+                loadKeys();
+                loadMe();
+            }
+        }
+
+        // Toggle key
+        async function toggleKey(id, enabled) {
+            await tenantFetch(`/api/keys/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ is_enabled: enabled })
+            });
+            loadKeys();
+        }
+
+        // Delete key
+        async function deleteKey(id) {
+            if (!confirm('确定删除此 Key？此操作不可恢复！')) return;
+            await tenantFetch(`/api/keys/${id}`, { method: 'DELETE' });
+            loadKeys();
+            loadMe();
+        }
+
+        function copyKey(key) {
+            navigator.clipboard.writeText(key);
+            alert('已复制到剪贴板');
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('border-blue-600', 'border-b-2', 'font-medium');
+                el.classList.add('text-gray-500');
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const btn = document.querySelector(`[data-tab="${tab}"]`);
+            btn.classList.add('border-blue-600', 'border-b-2', 'font-medium');
+            btn.classList.remove('text-gray-500');
+            if (tab === 'usage') loadUsage();
+            if (tab === 'stats') loadKeyStats();
+            if (tab === 'cost') loadCost();
+        }
+
+        // Set default date ranges
+        function setDefaultDates() {
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now);
+            thirtyDaysAgo.setDate(now.getDate() - 30);
+            
+            const formatDate = (d) => d.toISOString().split('T')[0];
+            
+            document.getElementById('statsStart').value = formatDate(thirtyDaysAgo);
+            document.getElementById('statsEnd').value = formatDate(now);
+            document.getElementById('costStart').value = formatDate(thirtyDaysAgo);
+            document.getElementById('costEnd').value = formatDate(now);
+        }
+
+        async function loadKeyStats() {
+            const startDate = document.getElementById('statsStart').value;
+            const endDate = document.getElementById('statsEnd').value;
+            
+            // Load per-key stats
+            const res = await tenantFetch(`/api/stats/keys?start_date=${startDate}&end_date=${endDate}`);
+            if (!res) return;
+            const data = await res.json();
+            
+            const tbody = document.getElementById('keyStatsTable');
+            tbody.innerHTML = data.data.map(k => `
+                <tr>
+                    <td class="px-4 py-2 font-mono text-sm">${k.key_prefix}<br><span class="text-gray-500 text-xs">${k.key_name || '-'}</span></td>
+                    <td class="px-4 py-2">${formatNumber(k.call_count)}</td>
+                    <td class="px-4 py-2">${formatNumber(k.token_count)}<br><span class="text-xs text-gray-500">↑${formatNumber(k.input_tokens)} ↓${formatNumber(k.output_tokens)}</span></td>
+                    <td class="px-4 py-2">${k.avg_latency ? k.avg_latency.toFixed(0) + 'ms' : '-'}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${k.success_rate >= 95 ? 'bg-green-100 text-green-800' : k.success_rate >= 80 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}">${k.success_rate.toFixed(1)}%</span></td>
+                    <td class="px-4 py-2 text-sm">${k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : '-'}</td>
+                </tr>
+            `).join('');
+
+            // Load per-model stats
+            const modelRes = await tenantFetch(`/api/stats/models?start_date=${startDate}&end_date=${endDate}`);
+            if (modelRes && modelRes.ok) {
+                const modelData = await modelRes.json();
+                const modelTbody = document.getElementById('modelStatsTable');
+                modelTbody.innerHTML = modelData.data.map(m => `
+                    <tr>
+                        <td class="px-4 py-2 font-mono text-sm">${m.model}<br><span class="text-xs text-gray-500">${m.provider_type}</span></td>
+                        <td class="px-4 py-2">${formatNumber(m.call_count)}</td>
+                        <td class="px-4 py-2">${formatNumber(m.token_count)}</td>
+                        <td class="px-4 py-2">↑${formatNumber(m.input_tokens)} / ↓${formatNumber(m.output_tokens)}</td>
+                        <td class="px-4 py-2">${m.avg_latency ? m.avg_latency.toFixed(0) + 'ms' : '-'}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        async function loadCost() {
+            const startDate = document.getElementById('costStart').value;
+            const endDate = document.getElementById('costEnd').value;
+            
+            const res = await tenantFetch(`/api/stats/cost?start_date=${startDate}&end_date=${endDate}`);
+            if (!res) return;
+            const data = await res.json();
+            const d = data.data;
+            
+            document.getElementById('totalCost').textContent = `$${d.total_cost.toFixed(4)}`;
+            
+            const tbody = document.getElementById('costTable');
+            tbody.innerHTML = d.details.map(c => `
+                <tr>
+                    <td class="px-4 py-2 font-mono text-sm">${c.model}</td>
+                    <td class="px-4 py-2">${formatNumber(c.calls)}</td>
+                    <td class="px-4 py-2">${formatNumber(c.input_tokens)}</td>
+                    <td class="px-4 py-2">${formatNumber(c.output_tokens)}</td>
+                    <td class="px-4 py-2 text-green-600">$${c.input_cost_usd.toFixed(4)}</td>
+                    <td class="px-4 py-2 text-green-600">$${c.output_cost_usd.toFixed(4)}</td>
+                    <td class="px-4 py-2 font-semibold text-green-600">$${c.total_cost_usd.toFixed(4)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function changePassword() {
+            const oldPassword = document.getElementById('oldPassword').value;
+            const password = document.getElementById('newPassword').value;
+            const passwordConfirm = document.getElementById('confirmNewPassword').value;
+            const errorEl = document.getElementById('pwdError');
+            const successEl = document.getElementById('pwdSuccess');
+
+            errorEl.classList.add('hidden');
+            successEl.classList.add('hidden');
+
+            if (!oldPassword) {
+                errorEl.textContent = '请输入旧密码';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            if (password !== passwordConfirm) {
+                errorEl.textContent = '两次输入的新密码不一致';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            if (password.length < 6) {
+                errorEl.textContent = '密码至少 6 个字符';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            const res = await tenantFetch('/api/dashboard/password', {
+                method: 'PUT',
+                body: JSON.stringify({ old_password: oldPassword, password, password_confirm: passwordConfirm })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                successEl.textContent = '密码已修改，下次登录请使用新密码';
+                successEl.classList.remove('hidden');
+                document.getElementById('oldPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmNewPassword').value = '';
+            } else {
+                errorEl.textContent = data.error || '修改失败';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function formatNumber(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n?.toString() || '0';
+        }
+
+        // Init
+        if (!currentKey) {
+            const key = prompt('请输入你的 API Key:');
+            if (key) {
+                currentKey = key;
+                localStorage.setItem('tenantKey', key);
+            }
+        }
+
+        loadMe();
+        loadKeys();
+        setDefaultDates();
+    </script>
+</body>
+</html>

@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - AI Gateway</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">🍮 AI Gateway - 管理后台</h1>
+            <a href="/login" class="text-gray-500 hover:text-gray-700">退出</a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        <!-- Stats Cards -->
+        <div id="stats" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">用户数</p>
+                <p class="text-2xl font-bold" id="statUsers">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">API Keys</p>
+                <p class="text-2xl font-bold" id="statKeys">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">供应商</p>
+                <p class="text-2xl font-bold" id="statProviders">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">模型</p>
+                <p class="text-2xl font-bold" id="statModels">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">今日 Tokens</p>
+                <p class="text-2xl font-bold" id="statTokens">-</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <p class="text-sm text-gray-500">今日调用</p>
+                <p class="text-2xl font-bold" id="statCalls">-</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mb-4 border-b">
+            <nav class="flex space-x-4 overflow-x-auto">
+                <button onclick="showTab('users')" class="tab-btn px-4 py-2 border-b-2 border-blue-600 font-medium whitespace-nowrap" data-tab="users">用户管理</button>
+                <button onclick="showTab('providers')" class="tab-btn px-4 py-2 text-gray-500 whitespace-nowrap" data-tab="providers">供应商配置</button>
+                <button onclick="showTab('models')" class="tab-btn px-4 py-2 text-gray-500 whitespace-nowrap" data-tab="models">模型映射</button>
+                <button onclick="showTab('lb')" class="tab-btn px-4 py-2 text-gray-500 whitespace-nowrap" data-tab="lb">负载均衡</button>
+                <button onclick="showTab('keys')" class="tab-btn px-4 py-2 text-gray-500 whitespace-nowrap" data-tab="keys">API Keys</button>
+                <button onclick="showTab('usage')" class="tab-btn px-4 py-2 text-gray-500 whitespace-nowrap" data-tab="usage">用量日志</button>
+            </nav>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="tab-users" class="tab-content">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-semibold">用户列表</h2>
+                <button onclick="showCreateUser()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ 创建用户</button>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">ID</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">用户名</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">角色</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">额度类型</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">已用/总额度</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Providers Tab -->
+        <div id="tab-providers" class="tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">供应商配置</h2>
+                <div class="flex items-center space-x-2">
+                    <select id="providerFilter" onchange="loadProviders()" class="border rounded px-3 py-2 text-sm">
+                        <option value="all">全部</option>
+                        <option value="api">通用 API</option>
+                        <option value="coding_plan">Coding Plan</option>
+                    </select>
+                    <button onclick="showCreateProvider()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ 添加供应商</button>
+                </div>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">名称</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">类型</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">分类</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Base URL</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">超时</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">优先级</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">权重</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="providersTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Models Tab -->
+        <div id="tab-models" class="tab-content hidden">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-semibold">模型映射</h2>
+                <button onclick="showCreateModel()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ 添加模型</button>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">模型名</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">供应商</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">上游模型</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">权重</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelsTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Load Balancing Tab -->
+        <div id="tab-lb" class="tab-content hidden">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold">负载均衡配置</h2>
+                <p class="text-sm text-gray-500 mt-1">当同一模型映射到多个供应商时，自动按权重轮询分配请求。权重越高，分配的请求比例越大。</p>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">模型名</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">供应商数量</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">负载均衡策略</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">供应商详情</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lbTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Keys Tab -->
+        <div id="tab-keys" class="tab-content hidden">
+            <div class="flex justify-between mb-4">
+                <h2 class="text-lg font-semibold">API Keys</h2>
+                <button onclick="showCreateKey()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ 创建 Key</button>
+            </div>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Key</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">名称</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">用户</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="keysTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Usage Tab -->
+        <div id="tab-usage" class="tab-content hidden">
+            <h2 class="text-lg font-semibold mb-4">用量日志</h2>
+            <div class="bg-white rounded shadow overflow-x-auto">
+                <table class="min-w-full divide-y">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">时间</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">模型</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">供应商</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Input/Output Tokens</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">延迟</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usageTable" class="divide-y"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 max-h-[80vh] overflow-y-auto">
+            <h3 id="modalTitle" class="text-lg font-semibold mb-4"></h3>
+            <div id="modalContent"></div>
+            <div class="flex justify-end mt-4 space-x-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-gray-500 hover:text-gray-700">取消</button>
+                <button id="modalSubmit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = window.location.origin;
+        const ADMIN_KEY = localStorage.getItem('adminKey') || '';
+
+        async function adminFetch(path, options = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ADMIN_KEY}`,
+                ...options.headers
+            };
+            const res = await fetch(`${API}${path}`, { ...options, headers });
+            if (res.status === 401) {
+                window.location.href = '/login';
+                return null;
+            }
+            return res;
+        }
+
+        // Load stats
+        async function loadStats() {
+            const res = await adminFetch('/api/admin/stats');
+            if (!res) return;
+            const data = await res.json();
+            document.getElementById('statUsers').textContent = data.total_users;
+            document.getElementById('statKeys').textContent = data.total_keys;
+            document.getElementById('statProviders').textContent = data.total_providers;
+            document.getElementById('statModels').textContent = data.total_models;
+            document.getElementById('statTokens').textContent = formatNumber(data.today_tokens);
+            document.getElementById('statCalls').textContent = formatNumber(data.today_calls);
+        }
+
+        // Load users
+        async function loadUsers() {
+            const res = await adminFetch('/api/admin/users');
+            if (!res) return;
+            const data = await res.json();
+            const tbody = document.getElementById('usersTable');
+            tbody.innerHTML = data.data.map(u => `
+                <tr>
+                    <td class="px-4 py-2">${u.id}</td>
+                    <td class="px-4 py-2">${u.username}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${u.role === 'admin' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}">${u.role}</span></td>
+                    <td class="px-4 py-2">${u.quota_type === 'token' ? 'Tokens' : '调用次数'}</td>
+                    <td class="px-4 py-2">${u.quota_type === 'token' ? `${formatNumber(u.token_used)} / ${u.token_quota === 0 ? '∞' : formatNumber(u.token_quota)}` : `${u.call_used} / ${u.call_quota === 0 ? '∞' : u.call_quota}`}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${u.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${u.is_enabled ? '启用' : '禁用'}</span></td>
+                    <td class="px-4 py-2">
+                        <button onclick="editUserQuota(${u.id})" class="text-blue-600 mr-2">调整额度</button>
+                        <button onclick="showChangePassword(${u.id}, '${u.username}')" class="text-purple-600 mr-2">修改密码</button>
+                        <button onclick="toggleUser(${u.id}, ${!u.is_enabled})" class="text-yellow-600 mr-2">${u.is_enabled ? '禁用' : '启用'}</button>
+                        <button onclick="deleteUser(${u.id})" class="text-red-600">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load providers
+        async function loadProviders() {
+            const res = await adminFetch('/api/admin/providers');
+            if (!res) return;
+            const data = await res.json();
+            const filter = document.getElementById('providerFilter')?.value || 'all';
+            const filtered = filter === 'all' ? data.data : data.data.filter(p => p.category === filter);
+            const tbody = document.getElementById('providersTable');
+            tbody.innerHTML = filtered.map(p => `
+                <tr>
+                    <td class="px-4 py-2 font-medium">${p.name}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs bg-purple-100 text-purple-800">${p.type}</span></td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${p.category === 'coding_plan' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}">${p.category === 'coding_plan' ? '🔧 Coding Plan' : '🌐 通用 API'}</span></td>
+                    <td class="px-4 py-2 text-sm truncate max-w-xs" title="${p.base_url}">${p.base_url}</td>
+                    <td class="px-4 py-2">${p.timeout}s</td>
+                    <td class="px-4 py-2">${p.priority}</td>
+                    <td class="px-4 py-2">${p.weight}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${p.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${p.is_enabled ? '启用' : '禁用'}</span></td>
+                    <td class="px-4 py-2">
+                        <button onclick="toggleProvider(${p.id}, ${!p.is_enabled})" class="text-yellow-600 mr-2">${p.is_enabled ? '禁用' : '启用'}</button>
+                        <button onclick="deleteProvider(${p.id})" class="text-red-600">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load models
+        async function loadModels() {
+            const res = await adminFetch('/api/admin/models');
+            if (!res) return;
+            const data = await res.json();
+            const tbody = document.getElementById('modelsTable');
+            tbody.innerHTML = data.data.map(m => `
+                <tr>
+                    <td class="px-4 py-2 font-mono">${m.name}</td>
+                    <td class="px-4 py-2">${m.provider_config?.name || '-'}</td>
+                    <td class="px-4 py-2 font-mono">${m.upstream_model || m.name}</td>
+                    <td class="px-4 py-2">${m.weight || 1}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${m.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${m.is_enabled ? '启用' : '禁用'}</span></td>
+                    <td class="px-4 py-2">
+                        <button onclick="toggleModel(${m.id}, ${!m.is_enabled})" class="text-yellow-600 mr-2">${m.is_enabled ? '禁用' : '启用'}</button>
+                        <button onclick="deleteModel(${m.id})" class="text-red-600">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load LB config
+        async function loadLB() {
+            // Group models by name
+            const res = await adminFetch('/api/admin/models');
+            if (!res) return;
+            const data = await res.json();
+            
+            // Group by model name
+            const groups = {};
+            data.data.forEach(m => {
+                if (!m.is_enabled) return;
+                if (!groups[m.name]) groups[m.name] = [];
+                groups[m.name].push(m);
+            });
+
+            const tbody = document.getElementById('lbTable');
+            const rows = [];
+            for (const [modelName, mappings] of Object.entries(groups)) {
+                const providers = mappings.map(m => 
+                    `${m.provider_config?.name} (权重: ${m.weight || 1})`
+                ).join('<br>');
+                
+                const strategy = mappings.length > 1 
+                    ? '<span class="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">轮询 (Round-Robin)</span>'
+                    : '<span class="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">单一供应商</span>';
+
+                rows.push(`
+                    <tr>
+                        <td class="px-4 py-2 font-mono">${modelName}</td>
+                        <td class="px-4 py-2">${mappings.length}</td>
+                        <td class="px-4 py-2">${strategy}</td>
+                        <td class="px-4 py-2 text-sm">${providers}</td>
+                        <td class="px-4 py-2">
+                            <button onclick="showEditLB('${modelName}')" class="text-blue-600 mr-2">编辑权重</button>
+                        </td>
+                    </tr>
+                `);
+            }
+            tbody.innerHTML = rows.join('');
+        }
+
+        // Load keys
+        async function loadKeys() {
+            const res = await adminFetch('/api/admin/keys');
+            if (!res) return;
+            const data = await res.json();
+            const tbody = document.getElementById('keysTable');
+            tbody.innerHTML = data.data.map(k => `
+                <tr>
+                    <td class="px-4 py-2 font-mono text-sm">${k.key.substring(0, 20)}...</td>
+                    <td class="px-4 py-2">${k.name || '-'}</td>
+                    <td class="px-4 py-2">${k.user?.username || '-'}</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${k.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${k.is_enabled ? '启用' : '禁用'}</span></td>
+                    <td class="px-4 py-2">
+                        <button onclick="deleteKey(${k.id})" class="text-red-600">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Load usage
+        async function loadUsage() {
+            const res = await adminFetch('/api/admin/usage?limit=100');
+            if (!res) return;
+            const data = await res.json();
+            const tbody = document.getElementById('usageTable');
+            tbody.innerHTML = data.data.map(l => `
+                <tr>
+                    <td class="px-4 py-2 text-sm">${new Date(l.created_at).toLocaleString()}</td>
+                    <td class="px-4 py-2 font-mono text-sm">${l.model}</td>
+                    <td class="px-4 py-2">${l.provider_type}</td>
+                    <td class="px-4 py-2">${l.input_tokens} / ${l.output_tokens}</td>
+                    <td class="px-4 py-2">${l.latency_ms}ms</td>
+                    <td class="px-4 py-2"><span class="px-2 py-1 rounded text-xs ${l.status_code < 300 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${l.status_code}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        // Tab switching
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('border-blue-600', 'border-b-2', 'font-medium');
+                el.classList.add('text-gray-500');
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const btn = document.querySelector(`[data-tab="${tab}"]`);
+            btn.classList.add('border-blue-600', 'border-b-2', 'font-medium');
+            btn.classList.remove('text-gray-500');
+            refreshTab(tab);
+        }
+
+        function refreshTab(tab) {
+            switch (tab) {
+                case 'users': loadUsers(); break;
+                case 'providers': loadProviders(); break;
+                case 'models': loadModels(); break;
+                case 'lb': loadLB(); break;
+                case 'keys': loadKeys(); break;
+                case 'usage': loadUsage(); break;
+            }
+        }
+
+        // Create user
+        function showCreateUser() {
+            document.getElementById('modalTitle').textContent = '创建用户';
+            document.getElementById('modalContent').innerHTML = `
+                <input id="cuUsername" placeholder="用户名" class="w-full border rounded px-3 py-2 mb-2" required>
+                <input id="cuPassword" type="password" placeholder="密码" class="w-full border rounded px-3 py-2 mb-2" required>
+                <select id="cuRole" class="w-full border rounded px-3 py-2 mb-2">
+                    <option value="tenant">租户</option>
+                    <option value="admin">管理员</option>
+                </select>
+                <select id="cuQuotaType" class="w-full border rounded px-3 py-2 mb-2">
+                    <option value="token">按 Token</option>
+                    <option value="calls">按调用次数</option>
+                </select>
+                <input id="cuQuota" type="number" placeholder="额度（0 = 不限）" class="w-full border rounded px-3 py-2 mb-2" value="0">
+                <input id="cuEmail" placeholder="邮箱" class="w-full border rounded px-3 py-2">
+            `;
+            document.getElementById('modalSubmit').onclick = async () => {
+                const username = document.getElementById('cuUsername').value;
+                const password = document.getElementById('cuPassword').value;
+                const role = document.getElementById('cuRole').value;
+                const quotaType = document.getElementById('cuQuotaType').value;
+                const quota = parseInt(document.getElementById('cuQuota').value) || 0;
+                const email = document.getElementById('cuEmail').value;
+
+                const body = { username, password, role, quota_type: quotaType, email };
+                if (quotaType === 'token') {
+                    body.token_quota = quota;
+                } else {
+                    body.call_quota = quota;
+                }
+
+                const res = await adminFetch('/api/admin/users', {
+                    method: 'POST',
+                    body: JSON.stringify(body)
+                });
+                if (res && res.ok) {
+                    closeModal();
+                    loadUsers();
+                }
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        // Edit user quota
+        function editUserQuota(id) {
+            document.getElementById('modalTitle').textContent = '调整额度';
+            document.getElementById('modalContent').innerHTML = `
+                <select id="eqQuotaType" class="w-full border rounded px-3 py-2 mb-2">
+                    <option value="token">按 Token</option>
+                    <option value="calls">按调用次数</option>
+                </select>
+                <input id="eqTokenQuota" type="number" placeholder="Token 额度（0 = 不限）" class="w-full border rounded px-3 py-2 mb-2" value="0">
+                <input id="eqCallQuota" type="number" placeholder="调用次数额度（0 = 不限）" class="w-full border rounded px-3 py-2" value="0">
+            `;
+            document.getElementById('modalSubmit').onclick = async () => {
+                const quotaType = document.getElementById('eqQuotaType').value;
+                const tokenQuota = parseInt(document.getElementById('eqTokenQuota').value) || 0;
+                const callQuota = parseInt(document.getElementById('eqCallQuota').value) || 0;
+
+                const res = await adminFetch(`/api/admin/users/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ quota_type: quotaType, token_quota: tokenQuota, call_quota: callQuota })
+                });
+                if (res && res.ok) {
+                    closeModal();
+                    loadUsers();
+                }
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function toggleUser(id, enabled) {
+            await adminFetch(`/api/admin/users/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ is_enabled: enabled })
+            });
+            loadUsers();
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('确定删除此用户？')) return;
+            await adminFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+            loadUsers();
+        }
+
+        function showChangePassword(id, username) {
+            document.getElementById('modalTitle').textContent = `修改密码 - ${username}`;
+            document.getElementById('modalContent').innerHTML = `
+                <p class="text-sm text-gray-500 mb-4">为用户 <strong>${username}</strong> 设置新密码</p>
+                <input id="cpPassword" type="password" placeholder="新密码（至少6位）" class="w-full border rounded px-3 py-2 mb-2" required>
+                <input id="cpPasswordConfirm" type="password" placeholder="再次输入新密码" class="w-full border rounded px-3 py-2 mb-2" required>
+                <p id="cpError" class="text-red-500 text-sm hidden"></p>
+            `;
+            document.getElementById('modalSubmit').onclick = async () => {
+                const password = document.getElementById('cpPassword').value;
+                const passwordConfirm = document.getElementById('cpPasswordConfirm').value;
+                const errorEl = document.getElementById('cpError');
+
+                if (password !== passwordConfirm) {
+                    errorEl.textContent = '两次输入的密码不一致';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                if (password.length < 6) {
+                    errorEl.textContent = '密码至少 6 个字符';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+
+                const res = await adminFetch(`/api/admin/users/${id}/password`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ password, password_confirm: passwordConfirm })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('密码已修改');
+                    closeModal();
+                } else {
+                    errorEl.textContent = data.error || '修改失败';
+                    errorEl.classList.remove('hidden');
+                }
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        // Create provider
+        async function showCreateProvider() {
+            // Load presets for quick selection
+            const presetsRes = await adminFetch('/api/admin/provider-presets');
+            let presets = [];
+            if (presetsRes && presetsRes.ok) {
+                const presetsData = await presetsRes.json();
+                presets = presetsData.data;
+            }
+
+            const presetOptions = presets.map(p =>
+                `<option value="${p.name}" data-type="${p.type}" data-url="${p.base_url}" data-cat="${p.category}">${p.category === 'coding_plan' ? '🔧' : '🌐'} ${p.name} (${p.type})</option>`
+            ).join('');
+
+            document.getElementById('modalTitle').textContent = '添加供应商';
+            document.getElementById('modalContent').innerHTML = `
+                <div class="mb-3">
+                    <label class="block text-sm font-medium mb-1">快速选择预设（可选）</label>
+                    <select id="cpPreset" onchange="applyPreset()" class="w-full border rounded px-3 py-2 text-sm">
+                        <option value="">-- 手动填写 --</option>
+                        ${presetOptions}
+                    </select>
+                </div>
+                <input id="cpName" placeholder="名称（如：openai-main）" class="w-full border rounded px-3 py-2 mb-2" required>
+                <select id="cpType" class="w-full border rounded px-3 py-2 mb-2">
+                    <option value="openai">OpenAI 兼容</option>
+                    <option value="anthropic">Anthropic</option>
+                </select>
+                <select id="cpCategory" class="w-full border rounded px-3 py-2 mb-2">
+                    <option value="api">🌐 通用 API</option>
+                    <option value="coding_plan">🔧 Coding Plan</option>
+                </select>
+                <input id="cpBaseURL" placeholder="Base URL" class="w-full border rounded px-3 py-2 mb-2" required>
+                <input id="cpAPIKey" type="password" placeholder="API Key" class="w-full border rounded px-3 py-2 mb-2" required>
+                <input id="cpTimeout" type="number" placeholder="超时（秒）" class="w-full border rounded px-3 py-2 mb-2" value="60">
+                <input id="cpPriority" type="number" placeholder="优先级（数字越大优先级越高）" class="w-full border rounded px-3 py-2 mb-2" value="100">
+                <input id="cpWeight" type="number" placeholder="权重（用于负载均衡）" class="w-full border rounded px-3 py-2" value="1">
+                <p class="text-xs text-gray-500 mt-2">💡 Coding Plan 使用专属 API Key 和 Base URL，请勿与通用 API 混用</p>
+            `;
+            document.getElementById('modalSubmit').onclick = async () => {
+                const res = await adminFetch('/api/admin/providers', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: document.getElementById('cpName').value,
+                        type: document.getElementById('cpType').value,
+                        category: document.getElementById('cpCategory').value,
+                        base_url: document.getElementById('cpBaseURL').value,
+                        api_key: document.getElementById('cpAPIKey').value,
+                        timeout: parseInt(document.getElementById('cpTimeout').value) || 60,
+                        priority: parseInt(document.getElementById('cpPriority').value) || 100,
+                        weight: parseInt(document.getElementById('cpWeight').value) || 1
+                    })
+                });
+                if (res && res.ok) {
+                    closeModal();
+                    loadProviders();
+                }
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function applyPreset() {
+            const select = document.getElementById('cpPreset');
+            const option = select.options[select.selectedIndex];
+            if (!option.value) return;
+
+            document.getElementById('cpName').value = option.value;
+            document.getElementById('cpType').value = option.dataset.type;
+            document.getElementById('cpCategory').value = option.dataset.cat;
+            document.getElementById('cpBaseURL').value = option.dataset.url;
+        }
+
+        async function toggleProvider(id, enabled) {
+            await adminFetch(`/api/admin/providers/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ is_enabled: enabled })
+            });
+            loadProviders();
+        }
+
+        async function deleteProvider(id) {
+            if (!confirm('确定删除此供应商？')) return;
+            await adminFetch(`/api/admin/providers/${id}`, { method: 'DELETE' });
+            loadProviders();
+        }
+
+        // Create model
+        async function showCreateModel() {
+            const res = await adminFetch('/api/admin/providers');
+            const data = await res.json();
+            const options = data.data.map(p => {
+                const catBadge = p.category === 'coding_plan' ? '🔧CP' : '🌐API';
+                return `<option value="${p.id}">${catBadge} ${p.name} (${p.type})</option>`;
+            }).join('');
+
+            document.getElementById('modalTitle').textContent = '添加模型';
+            document.getElementById('modalContent').innerHTML = `
+                <input id="cmName" placeholder="模型名（如：gpt-4o）" class="w-full border rounded px-3 py-2 mb-2" required>
+                <select id="cmProvider" class="w-full border rounded px-3 py-2 mb-2">${options}</select>
+                <input id="cmUpstream" placeholder="上游模型名（留空则使用模型名）" class="w-full border rounded px-3 py-2 mb-2">
+                <input id="cmWeight" type="number" placeholder="权重（负载均衡）" class="w-full border rounded px-3 py-2" value="1">
+                <p class="text-xs text-gray-500 mb-2">💡 添加同一模型名到不同供应商即可实现负载均衡</p>
+            `;
+            document.getElementById('modalSubmit').onclick = async () => {
+                const res = await adminFetch('/api/admin/models', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name: document.getElementById('cmName').value,
+                        provider_config_id: parseInt(document.getElementById('cmProvider').value),
+                        upstream_model: document.getElementById('cmUpstream').value,
+                        weight: parseInt(document.getElementById('cmWeight').value) || 1
+                    })
+                });
+                if (res && res.ok) {
+                    closeModal();
+                    loadModels();
+                }
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        // Edit LB weights
+        async function showEditLB(modelName) {
+            const res = await adminFetch(`/api/admin/lb/models/${modelName}`);
+            if (!res) return;
+            const data = await res.json();
+
+            let html = `
+                <p class="text-sm text-gray-500 mb-2">模型: <strong>${modelName}</strong></p>
+                <p class="text-sm text-gray-500 mb-4">策略: ${data.strategy}</p>
+            `;
+
+            data.providers.forEach(p => {
+                html += `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm">${p.provider_name} (${p.provider_type})</span>
+                        <input type="number" 
+                            class="w-20 border rounded px-2 py-1 text-center" 
+                            value="${p.weight}" 
+                            min="1"
+                            id="lbWeight_${p.provider_id}">
+                    </div>
+                `;
+            });
+
+            document.getElementById('modalTitle').textContent = '编辑负载均衡权重';
+            document.getElementById('modalContent').innerHTML = html;
+            document.getElementById('modalSubmit').onclick = async () => {
+                // Update weights
+                for (const p of data.providers) {
+                    const newWeight = document.getElementById(`lbWeight_${p.provider_id}`).value;
+                    await adminFetch(`/api/admin/models/${p.mapping_id || p.provider_id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ weight: parseInt(newWeight) })
+                    });
+                }
+                closeModal();
+                loadLB();
+                loadModels();
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function toggleModel(id, enabled) {
+            await adminFetch(`/api/admin/models/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ is_enabled: enabled })
+            });
+            loadModels();
+        }
+
+        async function deleteModel(id) {
+            if (!confirm('确定删除此模型映射？')) return;
+            await adminFetch(`/api/admin/models/${id}`, { method: 'DELETE' });
+            loadModels();
+            loadLB();
+        }
+
+        // Create key
+        async function showCreateKey() {
+            const res = await adminFetch('/api/admin/users');
+            const data = await res.json();
+            const options = data.data.filter(u => u.role === 'tenant').map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+
+            document.getElementById('modalTitle').textContent = '创建 API Key';
+            document.getElementById('modalContent').innerHTML = `
+                <select id="ckUser" class="w-full border rounded px-3 py-2 mb-2">${options}</select>
+                <input id="ckName" placeholder="Key 名称" class="w-full border rounded px-3 py-2">
+                <div id="ckResult" class="hidden mt-2 p-2 bg-green-100 rounded text-sm font-mono break-all"></div>
+            `;
+            document.getElementById('modalSubmit').onclick = async () => {
+                const res = await adminFetch('/api/admin/keys', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: parseInt(document.getElementById('ckUser').value),
+                        name: document.getElementById('ckName').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const result = document.getElementById('ckResult');
+                    result.textContent = `Key: ${data.key}`;
+                    result.classList.remove('hidden');
+                    loadKeys();
+                }
+            };
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function deleteKey(id) {
+            if (!confirm('确定删除此 Key？')) return;
+            await adminFetch(`/api/admin/keys/${id}`, { method: 'DELETE' });
+            loadKeys();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function formatNumber(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toString();
+        }
+
+        // Init
+        loadStats();
+        loadUsers();
+
+        // Check for API key prompt
+        if (!ADMIN_KEY) {
+            const key = prompt('请输入 Admin API Key（首次使用请到后台获取）:');
+            if (key) {
+                localStorage.setItem('adminKey', key);
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
