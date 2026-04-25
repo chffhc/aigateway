@@ -65,8 +65,14 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    localStorage.setItem('apiKey', 'login-success');
                     localStorage.setItem('userData', JSON.stringify(data.data));
+                    if (data.data.api_key) {
+                        if (data.data.role === 'admin') {
+                            localStorage.setItem('adminKey', data.data.api_key);
+                        } else {
+                            localStorage.setItem('tenantKey', data.data.api_key);
+                        }
+                    }
                     if (data.data.role === 'admin') {
                         window.location.href = '/admin';
                     } else {

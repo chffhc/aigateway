@@ -152,8 +152,28 @@ func loginHandler(c *gin.Context) {
 			"token_used":  user.TokenUsed,
 			"call_quota":  user.CallQuota,
 			"call_used":   user.CallUsed,
+			"api_key":    getOrCreateAPIKey(user.ID),
 		},
 	})
+}
+
+// getOrCreateAPIKey returns the user's latest active API key, or creates one if none exists.
+func getOrCreateAPIKey(userID uint) string {
+	var key db.APIKey
+	if err := db.DB.Where("user_id = ? AND is_enabled = 1", userID).Order("created_at desc").First(&key).Error; err == nil {
+		return key.Key
+	}
+	// Auto-create a new API key for the user
+	newKey := GenerateAPIKey()
+	enabled := true
+	newAPIKey := db.APIKey{
+		Key:       newKey,
+		UserID:    userID,
+		Name:      "auto-generated",
+		IsEnabled: &enabled,
+	}
+	db.DB.Create(&newAPIKey)
+	return newKey
 }
 
 func registerHandler(c *gin.Context) {
