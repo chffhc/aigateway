@@ -18,12 +18,12 @@ const (
 
 // ProviderPreset holds preset configuration for a provider endpoint
 type ProviderPreset struct {
-	Name     string
-	Type     string // openai, anthropic
-	Category string // api, coding_plan
-	BaseURL  string
-	Remark   string
-	Priority int
+	Name     string `json:"name"`
+	Type     string `json:"type"` // openai, anthropic
+	Category string `json:"category"` // api, coding_plan
+	BaseURL  string `json:"base_url"`
+	Remark   string `json:"remark"`
+	Priority int    `json:"priority"`
 }
 
 // GetAllPresets returns all preset provider configurations
