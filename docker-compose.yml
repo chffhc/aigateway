@@ -13,10 +13,13 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       PROXY_TIMEOUT: 60s
     volumes:
-      - ./data:/data
+      - aigateway-data:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  aigateway-data:
